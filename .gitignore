@@ -1,0 +1,22 @@
+# Vivado generated project directory (recreate with scripts/create_project.tcl)
+vivado/
+
+# Vivado logs, journals and caches
+*.jou
+*.log
+*.str
+.Xil/
+*.cache/
+*.runs/
+*.sim/
+*.hw/
+*.ip_user_files/
+webtalk*
+usage_statistics_webtalk.*
+xsim.dir/
+
+# Build outputs
+*.bit
+*.bin
+*.ltx
+*.dcp
