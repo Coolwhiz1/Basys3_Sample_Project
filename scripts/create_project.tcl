@@ -31,7 +31,11 @@ if {[catch {set_property board_part $board_part [current_project]} err]} {
 add_files {../src/top.v}
 add_files {../src/seven_seg_hex.v}
 add_files {../src/clock_divider.v}
+add_files {../src/uart_rx.v}
+add_files {../src/uart_tx.v}
+add_files {../src/uart_test_harness.v}
 add_files {../sim/top_tb.v}
+add_files {../sim/uart_test_harness_tb.v}
 add_files -fileset constrs_1 {../constraints/Basys3_Master.xdc}
 
 

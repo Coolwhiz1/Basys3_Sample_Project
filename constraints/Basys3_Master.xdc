@@ -4,9 +4,9 @@
 ##   - uncomment the lines corresponding to used pins
 ##   - rename the used ports (in each line, after get_ports) to match the
 ##     top-level signal names used in your Verilog/VHDL
-## Only the pins used by this sample project (clk, sw, led, btnC, seg/dp/an)
-## are uncommented below; everything else is left as reference for when you
-## extend the design.
+## Only the pins used by this sample project (clk, sw, led, btnC, seg/dp/an,
+## RsRx/RsTx) are uncommented below; everything else is left as reference
+## for when you extend the design.
 
 ## Clock signal
 set_property -dict { PACKAGE_PIN W5   IOSTANDARD LVCMOS33 } [get_ports clk]
@@ -131,8 +131,8 @@ set_property -dict { PACKAGE_PIN U18 IOSTANDARD LVCMOS33 } [get_ports { btnC }]
 
 
 ##USB-RS232 Interface
-#set_property -dict { PACKAGE_PIN B18 IOSTANDARD LVCMOS33 } [get_ports RsRx]
-#set_property -dict { PACKAGE_PIN A18 IOSTANDARD LVCMOS33 } [get_ports RsTx]
+set_property -dict { PACKAGE_PIN B18 IOSTANDARD LVCMOS33 } [get_ports RsRx]
+set_property -dict { PACKAGE_PIN A18 IOSTANDARD LVCMOS33 } [get_ports RsTx]
 
 
 ##USB HID (PS/2)

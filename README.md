@@ -11,26 +11,37 @@ designs.
 - The center button (`btnC`) is a synchronous reset.
 - A 16-bit counter increments once per second and is shown in hex on the
   4-digit 7-segment display.
+- A small UART command/response protocol runs over the board's onboard
+  USB-UART bridge (no extra wiring — the same USB cable used to program the
+  board), so a PC script can read the switches and counter and trigger a
+  reset. See [UART test harness](#uart-test-harness) below.
 
-This exercises the board's clock, switches, LEDs, one pushbutton, and the
-7-segment display — the most commonly used I/O on the board — in a single
-small design that's easy to read and extend.
+This exercises the board's clock, switches, LEDs, one pushbutton, the
+7-segment display, and UART — the most commonly used I/O on the board — in
+a small design that's easy to read and extend.
 
 ## Project layout
 
 ```
-basys3_sample_project/
+Basys3_Sample_Project/
 ├── src/
-│   ├── top.v               top-level module
-│   ├── clock_divider.v     divides 100 MHz down to a 1 kHz mux tick and 1 Hz seconds tick
-│   └── seven_seg_hex.v     hex-to-7-segment decoder + digit multiplexer
+│   ├── top.v                    top-level module
+│   ├── clock_divider.v          divides 100 MHz down to a 1 kHz mux tick and 1 Hz seconds tick
+│   ├── seven_seg_hex.v          hex-to-7-segment decoder + digit multiplexer
+│   ├── uart_rx.v                8-N-1 UART receiver
+│   ├── uart_tx.v                8-N-1 UART transmitter
+│   └── uart_test_harness.v      command/response protocol (see below)
 ├── sim/
-│   └── top_tb.v            simulation-only testbench (not synthesized)
+│   ├── top_tb.v                 testbench for the switch/LED/reset logic
+│   └── uart_test_harness_tb.v   self-checking testbench for the UART protocol
+├── python/
+│   ├── basys3_test_harness.py   host-side automated test script (pyserial)
+│   └── requirements.txt
 ├── constraints/
-│   └── Basys3_Master.xdc   Digilent's master XDC; only the pins this
-│                            project uses are uncommented
+│   └── Basys3_Master.xdc        Digilent's master XDC; only the pins this
+│                                 project uses are uncommented
 └── scripts/
-    └── create_project.tcl  regenerates the Vivado project from these sources
+    └── create_project.tcl       regenerates the Vivado project from these sources
 ```
 
 Only sources and this script are checked in — the generated `vivado/`
@@ -81,13 +92,65 @@ launch_simulation
 run all
 ```
 
+`create_project.tcl` adds both `top_tb.v` and `uart_test_harness_tb.v` to
+the sim fileset but only one can be the simulation top at a time (it sets
+`top_tb` by default). To run the UART protocol testbench instead:
+
+```tcl
+set_property top uart_test_harness_tb [get_filesets sim_1]
+launch_simulation
+run all
+```
+
+## UART test harness
+
+`src/uart_test_harness.v` runs a tiny command/response protocol over the
+board's onboard USB-UART bridge (`RsRx`/`RsTx`, pins B18/A18) at 115200
+8-N-1. No extra wiring is needed — it's the same USB cable already used to
+program the board; Windows enumerates it as a "USB Serial Port (COMx)"
+once the bitstream is loaded (check Device Manager for the COM number).
+
+| Host sends | FPGA replies | Meaning |
+|---|---|---|
+| `'S'` (0x53) | 2 bytes: `sw[15:8]`, `sw[7:0]` | current switch positions |
+| `'C'` (0x43) | 2 bytes: `count[15:8]`, `count[7:0]` | the free-running 1 Hz counter |
+| `'R'` (0x52) | `"OK"` | resets the counter to 0 |
+| `'T'` (0x54) | `0x01` | self-test / BIST placeholder |
+| anything else | `"?"` | unrecognized command |
+
+This is meant as a stand-in for a bench automated-test setup: a host script
+sends commands and checks the responses, the same way ATE software talks
+to a unit under test, instead of a person reading switches and the display
+by eye.
+
+`python/basys3_test_harness.py` is that host script. After programming the
+board:
+
+```bash
+cd python
+pip install -r requirements.txt
+python basys3_test_harness.py --list          # find the board's COM port
+python basys3_test_harness.py --port COM5      # run the test sequence
+```
+
+It runs a self-test check, reads back the switch positions, resets and
+re-reads the counter, times the counter's tick rate over a few seconds to
+confirm it's actually running at 1 Hz (not e.g. 2x fast — the kind of bug
+that's easy to introduce and only a timed test like this will catch), and
+checks that an unrecognized command is handled gracefully. It exits 0 on
+success, 1 if anything failed, and prints a PASS/FAIL line per check plus
+a summary — pipe it into whatever CI or bench-test logging you'd normally
+use.
+
 ## Extending it
 
-The unused board I/O (other four buttons, Pmod headers, VGA, USB-RS232,
+The remaining unused board I/O (other four buttons, Pmod headers, VGA,
 PS/2, Quad SPI) is present but commented out in
 `constraints/Basys3_Master.xdc` — uncomment what you need, add matching
-ports to `top.v`, and re-run `create_project.tcl` (it re-adds all files
-under `src/`, `sim/`, and the constraints file automatically).
+ports to `top.v`, add any new source files to `scripts/create_project.tcl`
+(list them explicitly like the existing lines — a `glob`-based `add_files`
+didn't pick up files reliably in this Vivado install), and re-run
+`create_project.tcl`.
 
 ## Pin reference (used in this project)
 
@@ -100,5 +163,7 @@ under `src/`, `sim/`, and the constraints file automatically).
 | `seg[6:0]` | W7, W6, U8, V8, U5, V5, U7 |
 | `dp` | V7 |
 | `an[3:0]` | U2, U4, V4, W4 |
+| `RsRx` | B18 |
+| `RsTx` | A18 |
 
 Source: [Digilent Basys-3-Master.xdc](https://github.com/Digilent/digilent-xdc/blob/master/Basys-3-Master.xdc).
