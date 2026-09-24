@@ -17,7 +17,8 @@
 set proj_name   "basys3_sample_project"
 set proj_dir    "../vivado"
 set part        "xc7a35tcpg236-1"
-set board_part  "digilentinc.com:basys3:part0:1.2"
+#Not working
+#set board_part  "digilentinc.com:basys3:part0:1.2"
 
 create_project $proj_name $proj_dir -part $part -force
 
@@ -27,9 +28,12 @@ if {[catch {set_property board_part $board_part [current_project]} err]} {
     puts "NOTE: could not set board_part ($err) - continuing with part-only flow."
 }
 
-add_files -norecurse [glob -nocomplain ../src/*.v]
-add_files -fileset sim_1 -norecurse [glob -nocomplain ../sim/*.v]
-add_files -fileset constrs_1 -norecurse ../constraints/Basys3_Master.xdc
+add_files {../src/top.v}
+add_files {../src/seven_seg_hex.v}
+add_files {../src/clock_divider.v}
+add_files {../sim/top_tb.v}
+add_files -fileset constrs_1 {../constraints/Basys3_Master.xdc}
+
 
 set_property top top [current_fileset]
 set_property top top_tb [get_filesets sim_1]
